@@ -1,9 +1,11 @@
 import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 enum ScreenshotCaptureService {
     enum CaptureError: LocalizedError {
         case missingWindow
+        case saveCancelled
         case unableToCreateBitmap
         case unableToEncodePNG
 
@@ -11,6 +13,8 @@ enum ScreenshotCaptureService {
             switch self {
             case .missingWindow:
                 "No visible Local Cam window was found."
+            case .saveCancelled:
+                "Screenshot save was cancelled."
             case .unableToCreateBitmap:
                 "Unable to render the current window."
             case .unableToEncodePNG:
@@ -60,7 +64,10 @@ enum ScreenshotCaptureService {
             throw CaptureError.unableToEncodePNG
         }
 
-        let outputURL = try outputFileURL()
+        guard let outputURL = chooseOutputFileURL() else {
+            throw CaptureError.saveCancelled
+        }
+
         try pngData.write(to: outputURL, options: .atomic)
         return outputURL
     }
@@ -124,15 +131,24 @@ enum ScreenshotCaptureService {
         )
     }
 
-    private static func outputFileURL() throws -> URL {
-        let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask)[0]
-        let folderURL = desktopURL.appendingPathComponent("Local Cam Screenshots", isDirectory: true)
-        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
-
+    private static func chooseOutputFileURL() -> URL? {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HH-mm-ss"
         let fileName = "Local-Cam-\(formatter.string(from: Date())).png"
-        return folderURL.appendingPathComponent(fileName)
+
+        let panel = NSSavePanel()
+        panel.title = "Save Local Cam Screenshot"
+        panel.message = "Choose where to save the 2560 x 1600 PNG screenshot."
+        panel.nameFieldStringValue = fileName
+        panel.allowedContentTypes = [.png]
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+
+        if let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
+            panel.directoryURL = desktopURL
+        }
+
+        return panel.runModal() == .OK ? panel.url : nil
     }
 
     private struct CaptureResult {
