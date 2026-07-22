@@ -15,6 +15,11 @@ final class CameraStore: ObservableObject {
         save()
     }
 
+    func add(cameras newCameras: [CameraRecord]) {
+        cameras.insert(contentsOf: newCameras, at: 0)
+        save()
+    }
+
     func update(camera: CameraRecord) {
         guard let index = cameras.firstIndex(where: { $0.id == camera.id }) else { return }
         cameras[index] = camera

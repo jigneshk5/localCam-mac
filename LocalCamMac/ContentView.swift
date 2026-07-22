@@ -21,6 +21,8 @@ struct ContentView: View {
 private struct HomeView: View {
     @EnvironmentObject private var store: CameraStore
     @State private var showingAddCamera = false
+    @State private var showingAddOptions = false
+    @State private var showingBatchAdd = false
     @State private var selectedCamera: CameraRecord?
     @State private var editingCamera: CameraRecord?
     @State private var deletingCamera: CameraRecord?
@@ -44,7 +46,7 @@ private struct HomeView: View {
                     Spacer()
 
                     Button {
-                        showingAddCamera = true
+                        showingAddOptions = true
                     } label: {
                         Label("Add Camera", systemImage: "plus")
                     }
@@ -53,7 +55,7 @@ private struct HomeView: View {
 
                 if store.cameras.isEmpty {
                     EmptyHomeView {
-                        showingAddCamera = true
+                        showingAddOptions = true
                     }
                 } else {
                     ScrollView {
@@ -79,6 +81,11 @@ private struct HomeView: View {
                 .environmentObject(store)
                 .frame(minWidth: 720, minHeight: 760)
         }
+        .sheet(isPresented: $showingBatchAdd) {
+            BatchAddCameraView()
+                .environmentObject(store)
+                .frame(minWidth: 720, minHeight: 760)
+        }
         .sheet(item: $editingCamera) { camera in
             AddCameraView(cameraToEdit: camera)
                 .environmentObject(store)
@@ -101,6 +108,15 @@ private struct HomeView: View {
             }
         } message: {
             Text("Remove \(deletingCamera?.name ?? "this camera") from Local Cam?")
+        }
+        .confirmationDialog("Add cameras", isPresented: $showingAddOptions) {
+            Button("Add Camera") {
+                showingAddCamera = true
+            }
+            Button("Batch Add Cameras") {
+                showingBatchAdd = true
+            }
+            Button("Cancel", role: .cancel) { }
         }
     }
 }
@@ -199,6 +215,7 @@ private struct AddCameraView: View {
     @State private var discoveredCameras: [DiscoveredCamera] = []
     @State private var searchMessage: String?
     @State private var validationMessage: String?
+    @State private var isPasswordVisible = false
 
     init(cameraToEdit: CameraRecord? = nil) {
         self.cameraToEdit = cameraToEdit
@@ -206,12 +223,18 @@ private struct AddCameraView: View {
         _cameraType = State(initialValue: type)
         _cameraName = State(initialValue: cameraToEdit?.name ?? "")
         _host = State(initialValue: cameraToEdit?.host ?? "")
-        _username = State(initialValue: cameraToEdit?.username ?? type?.defaultUsername ?? "admin")
+        _username = State(initialValue: cameraToEdit?.username ?? type?.defaultUsername ?? "")
         _password = State(initialValue: cameraToEdit?.password ?? "")
         _rtspPort = State(initialValue: String(cameraToEdit?.rtspPort ?? type?.defaultRTSPPort ?? 554))
         _onvifPort = State(initialValue: String(cameraToEdit?.onvifPort ?? type?.defaultONVIFPort ?? 8080))
         _customMainPath = State(initialValue: cameraToEdit?.rtspPath ?? CameraType.other.rtspPath(for: .main))
         _customSubPath = State(initialValue: cameraToEdit?.rtspSubPath ?? CameraType.other.rtspPath(for: .sub))
+    }
+
+    private var credentialStatusLabel: String {
+        let usernameText = username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "username blank" : "username set"
+        let passwordText = password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "password blank" : "password set"
+        return "\(usernameText) | \(passwordText)"
     }
 
     var body: some View {
@@ -275,12 +298,14 @@ private struct AddCameraView: View {
                         TextField("Camera IP or host", text: $host)
                     }
 
-                    sectionTitle("PORTS")
-                    MacFormCard {
-                        HStack {
-                            TextField("RTSP port", text: $rtspPort)
-                            Divider()
-                            TextField("ONVIF port", text: $onvifPort)
+                    if selectedType == .other {
+                        sectionTitle("PORTS")
+                        MacFormCard {
+                            HStack {
+                                TextField("RTSP port", text: $rtspPort)
+                                Divider()
+                                TextField("ONVIF port", text: $onvifPort)
+                            }
                         }
                     }
 
@@ -301,7 +326,23 @@ private struct AddCameraView: View {
                     MacFormCard {
                         TextField("Username", text: $username)
                         Divider()
-                        SecureField("Password", text: $password)
+                        HStack {
+                            Group {
+                                if isPasswordVisible {
+                                    TextField("Password", text: $password)
+                                } else {
+                                    SecureField("Password", text: $password)
+                                }
+                            }
+                            Button {
+                                isPasswordVisible.toggle()
+                            } label: {
+                                Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(AppTheme.accent)
+                            .accessibilityLabel(isPasswordVisible ? "Hide password" : "Show password")
+                        }
                     }
 
                     if isSaving {
@@ -345,7 +386,7 @@ private struct AddCameraView: View {
 
             Divider()
 
-            Text(searchMessage ?? "Tap a discovered camera to prefill its host and ports.")
+            Text(searchMessage ?? "Tap a discovered camera to prefill its host.")
                 .foregroundStyle(.secondary)
 
             ForEach(discoveredCameras) { camera in
@@ -356,7 +397,7 @@ private struct AddCameraView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(camera.name)
                             .font(.title3.weight(.medium))
-                        Text("\(camera.host) | ONVIF \(camera.onvifPort) | RTSP \(selectedType.defaultRTSPPort)")
+                        Text("\(camera.host) | \(credentialStatusLabel)")
                             .foregroundStyle(Color(red: 0.22, green: 0.54, blue: 0.88))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -395,7 +436,7 @@ private struct AddCameraView: View {
                 discoveredCameras = results
                 searchMessage = results.isEmpty
                     ? "No ONVIF cameras replied on the LAN. You can still enter camera details manually."
-                    : "Tap a discovered camera to prefill its host and ports."
+                    : "Tap a discovered camera to prefill its host."
             }
         }
     }
@@ -403,8 +444,10 @@ private struct AddCameraView: View {
     private func applyDiscovery(_ camera: DiscoveredCamera) {
         cameraName = camera.name
         host = camera.host
-        rtspPort = String(camera.rtspPort)
-        onvifPort = String(camera.onvifPort)
+        if cameraType == .other {
+            rtspPort = String(camera.rtspPort)
+            onvifPort = String(camera.onvifPort)
+        }
         validationMessage = nil
     }
 
@@ -415,9 +458,26 @@ private struct AddCameraView: View {
             validationMessage = "Camera IP or host is required."
             return
         }
-        guard let parsedRTSP = Int(rtspPort), let parsedONVIF = Int(onvifPort) else {
-            validationMessage = "Ports must be valid whole numbers."
+        guard !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            validationMessage = "Username is required."
             return
+        }
+        guard !password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            validationMessage = "Password is required."
+            return
+        }
+        let parsedRTSP: Int
+        let parsedONVIF: Int
+        if selectedType == .other {
+            guard let customRTSP = Int(rtspPort), let customONVIF = Int(onvifPort) else {
+                validationMessage = "Ports must be valid whole numbers."
+                return
+            }
+            parsedRTSP = customRTSP
+            parsedONVIF = customONVIF
+        } else {
+            parsedRTSP = selectedType.defaultRTSPPort
+            parsedONVIF = selectedType.defaultONVIFPort
         }
 
         let camera = CameraRecord(
@@ -433,18 +493,16 @@ private struct AddCameraView: View {
             rtspSubPath: subPath(for: selectedType)
         )
 
-        if !camera.sanitizedPassword.isEmpty {
-            isSaving = true
-            validationMessage = nil
-            do {
-                try await LocalONVIFCameraService.shared.validateCredentials(for: camera)
-            } catch {
-                isSaving = false
-                validationMessage = "ONVIF validation failed. Please check username, password, IP, and ONVIF port."
-                return
-            }
+        isSaving = true
+        validationMessage = nil
+        do {
+            try await LocalONVIFCameraService.shared.validateCredentials(for: camera)
+        } catch {
             isSaving = false
+            validationMessage = "ONVIF validation failed. Please check username, password, IP, and ONVIF port."
+            return
         }
+        isSaving = false
 
         if cameraToEdit == nil {
             store.add(camera: camera)
@@ -469,6 +527,293 @@ private struct AddCameraView: View {
 
     private func subPath(for type: CameraType) -> String {
         type == .other ? customSubPath : type.rtspPath(for: .sub)
+    }
+}
+
+private struct BatchCameraDraft: Identifiable, Hashable {
+    var id = UUID()
+    var name: String
+    var host: String
+    var username = ""
+    var password = ""
+    var isExpanded = false
+
+    var credentialStatusLabel: String {
+        let usernameText = username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "username blank" : "username set"
+        let passwordText = password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "password blank" : "password set"
+        return "\(usernameText) | \(passwordText)"
+    }
+}
+
+private struct BatchAddCameraView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var store: CameraStore
+
+    @State private var cameraType: CameraType?
+    @State private var sharedUsername = ""
+    @State private var sharedPassword = ""
+    @State private var customRTSPPort = "554"
+    @State private var customONVIFPort = "8080"
+    @State private var customMainPath = CameraType.other.rtspPath(for: .main)
+    @State private var customSubPath = CameraType.other.rtspPath(for: .sub)
+    @State private var isSearching = false
+    @State private var isSaving = false
+    @State private var drafts: [BatchCameraDraft] = []
+    @State private var message: String?
+    @State private var validationError: String?
+    @State private var isPasswordVisible = false
+
+    var body: some View {
+        ZStack {
+            AppTheme.pageBackground.ignoresSafeArea()
+
+            if let selectedType = cameraType {
+                batchForm(for: selectedType)
+            } else {
+                BrandSelectionView(onBack: {
+                    dismiss()
+                }) { selectedType in
+                    cameraType = selectedType
+                    sharedUsername = selectedType.defaultUsername
+                    customRTSPPort = String(selectedType.defaultRTSPPort)
+                    customONVIFPort = String(selectedType.defaultONVIFPort)
+                    customMainPath = selectedType.rtspPath(for: .main)
+                    customSubPath = selectedType.rtspPath(for: .sub)
+                }
+            }
+        }
+        .alert("Validation failed", isPresented: Binding(get: { validationError != nil }, set: { if !$0 { validationError = nil } })) {
+            Button("OK", role: .cancel) {
+                validationError = nil
+            }
+        } message: {
+            Text(validationError ?? "")
+        }
+    }
+
+    private func batchForm(for selectedType: CameraType) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button("Back") {
+                    cameraType = nil
+                    drafts = []
+                    message = nil
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(AppTheme.accent)
+
+                Spacer()
+
+                Text("Batch Add Cameras")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppTheme.ink)
+
+                Spacer()
+
+                Button("Add All") {
+                    Task {
+                        await saveAll(for: selectedType)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(AppTheme.accent)
+                .disabled(isSaving)
+            }
+            .padding(22)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    BrandSummaryCard(type: selectedType)
+
+                    sectionTitle("SHARED CREDENTIALS")
+                    MacFormCard {
+                        TextField("Username", text: $sharedUsername)
+                        Divider()
+                        HStack {
+                            Group {
+                                if isPasswordVisible {
+                                    TextField("Password", text: $sharedPassword)
+                                } else {
+                                    SecureField("Password", text: $sharedPassword)
+                                }
+                            }
+                            Button {
+                                isPasswordVisible.toggle()
+                            } label: {
+                                Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(AppTheme.accent)
+                        }
+                        Divider()
+                        Button("Apply Credentials To All Cameras") {
+                            drafts = drafts.map { draft in
+                                var updated = draft
+                                updated.username = sharedUsername
+                                updated.password = sharedPassword
+                                return updated
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(AppTheme.accent)
+                    }
+
+                    sectionTitle("LAN SEARCH")
+                    MacFormCard {
+                        Button {
+                            searchLAN()
+                        } label: {
+                            HStack {
+                                if isSearching {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "dot.radiowaves.left.and.right")
+                                }
+                                Text(isSearching ? "Searching Local Network" : "Search Local Network")
+                                    .font(.title3.weight(.medium))
+                                Spacer()
+                            }
+                            .foregroundStyle(AppTheme.accent)
+                        }
+                        .buttonStyle(.plain)
+
+                        Divider()
+                        Text(message ?? "Tap a discovered camera to update its username and password.")
+                            .foregroundStyle(.secondary)
+
+                        ForEach($drafts) { $draft in
+                            Divider()
+                            Button {
+                                draft.isExpanded.toggle()
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(draft.name)
+                                        .font(.title3.weight(.medium))
+                                    Text("\(draft.host) | \(draft.credentialStatusLabel)")
+                                        .foregroundStyle(Color(red: 0.22, green: 0.54, blue: 0.88))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(AppTheme.accent)
+
+                            if draft.isExpanded {
+                                TextField("Username", text: $draft.username)
+                                Divider()
+                                SecureField("Password", text: $draft.password)
+                            }
+                        }
+                    }
+
+                    if selectedType == .other {
+                        sectionTitle("PORTS")
+                        MacFormCard {
+                            HStack {
+                                TextField("RTSP port", text: $customRTSPPort)
+                                Divider()
+                                TextField("ONVIF port", text: $customONVIFPort)
+                            }
+                        }
+
+                        sectionTitle("STREAMS")
+                        MacFormCard {
+                            TextField("Main stream path", text: $customMainPath)
+                            Divider()
+                            TextField("Sub stream path", text: $customSubPath)
+                        }
+                    }
+
+                    Button("Batch Add All Cameras") {
+                        Task {
+                            await saveAll(for: selectedType)
+                        }
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(isSaving)
+
+                    if isSaving {
+                        HStack {
+                            ProgressView()
+                            Text("Validating cameras...")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 36)
+                .padding(.bottom, 36)
+            }
+        }
+    }
+
+    private func searchLAN() {
+        isSearching = true
+        drafts = []
+        message = nil
+        Task {
+            let results = await LocalCameraDiscoveryService.shared.search()
+            await MainActor.run {
+                isSearching = false
+                drafts = results.map {
+                    BatchCameraDraft(name: $0.name, host: $0.host, username: sharedUsername, password: sharedPassword)
+                }
+                message = drafts.isEmpty ? "No ONVIF cameras replied on the LAN." : "Found \(drafts.count) camera(s). Click one to edit credentials."
+            }
+        }
+    }
+
+    @MainActor
+    private func saveAll(for selectedType: CameraType) async {
+        guard !drafts.isEmpty else {
+            validationError = "Search and select cameras first."
+            return
+        }
+        guard drafts.allSatisfy({ !$0.username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !$0.password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+            validationError = "Username and password are required for every camera."
+            return
+        }
+
+        let rtspPort: Int
+        let onvifPort: Int
+        if selectedType == .other {
+            guard let parsedRTSP = Int(customRTSPPort), let parsedONVIF = Int(customONVIFPort) else {
+                validationError = "Ports must be valid whole numbers."
+                return
+            }
+            rtspPort = parsedRTSP
+            onvifPort = parsedONVIF
+        } else {
+            rtspPort = selectedType.defaultRTSPPort
+            onvifPort = selectedType.defaultONVIFPort
+        }
+
+        let cameras = drafts.map { draft in
+            CameraRecord(
+                name: draft.name.isEmpty ? "\(selectedType.title) \(draft.host)" : draft.name,
+                cameraType: selectedType,
+                host: draft.host,
+                username: draft.username,
+                password: draft.password,
+                rtspPort: rtspPort,
+                onvifPort: onvifPort,
+                rtspPath: selectedType == .other ? customMainPath : selectedType.rtspPath(for: .main),
+                rtspSubPath: selectedType == .other ? customSubPath : selectedType.rtspPath(for: .sub)
+            )
+        }
+
+        isSaving = true
+        for camera in cameras {
+            do {
+                try await LocalONVIFCameraService.shared.validateCredentials(for: camera)
+            } catch {
+                isSaving = false
+                validationError = "ONVIF validation failed for \(camera.name). Please check username, password, IP, and ONVIF port."
+                return
+            }
+        }
+        isSaving = false
+
+        store.add(cameras: cameras)
+        dismiss()
     }
 }
 
@@ -545,6 +890,7 @@ private struct CameraDetailView: View {
     @State private var toastMessage: String?
     @State private var activeCommand: CameraCommand?
     @State private var isSendingCommand = false
+    @State private var isPTZUnavailable = false
     @State private var fullscreenPresenter = FullscreenWindowPresenter()
 
     init(camera: CameraRecord) {
@@ -628,14 +974,19 @@ private struct CameraDetailView: View {
         }
         .onDisappear {
             playerController.stop()
+            fullscreenPresenter.close()
         }
     }
 
     private var videoPlayer: some View {
-        VLCVideoContainerView(player: playerController.player)
+        VLCVideoContainerView(controller: playerController)
             .aspectRatio(16 / 9, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .background(.black)
+            .overlay(alignment: .topLeading) {
+                PlaybackStatusBadge(controller: playerController)
+                    .padding(10)
+            }
     }
 
     private var streamPicker: some View {
@@ -644,19 +995,20 @@ private struct CameraDetailView: View {
 
     private var controls: some View {
         VStack(spacing: 18) {
-            ControlButton(icon: CameraCommand.up.icon, isActive: activeCommand == .up, isBusy: isSendingCommand) { sendCommand(.up) }
+            ControlButton(icon: CameraCommand.up.icon, isActive: activeCommand == .up, isBusy: isSendingCommand, isUnavailable: isPTZUnavailable) { sendCommand(.up) }
             HStack(spacing: 18) {
-                ControlButton(icon: CameraCommand.left.icon, isActive: activeCommand == .left, isBusy: isSendingCommand) { sendCommand(.left) }
+                ControlButton(icon: CameraCommand.left.icon, isActive: activeCommand == .left, isBusy: isSendingCommand, isUnavailable: isPTZUnavailable) { sendCommand(.left) }
                 ZoomControlButton(
                     isZoomInActive: activeCommand == .zoomIn,
                     isZoomOutActive: activeCommand == .zoomOut,
                     isBusy: isSendingCommand,
+                    isUnavailable: isPTZUnavailable,
                     onZoomIn: { sendCommand(.zoomIn) },
                     onZoomOut: { sendCommand(.zoomOut) }
                 )
-                ControlButton(icon: CameraCommand.right.icon, isActive: activeCommand == .right, isBusy: isSendingCommand) { sendCommand(.right) }
+                ControlButton(icon: CameraCommand.right.icon, isActive: activeCommand == .right, isBusy: isSendingCommand, isUnavailable: isPTZUnavailable) { sendCommand(.right) }
             }
-            ControlButton(icon: CameraCommand.down.icon, isActive: activeCommand == .down, isBusy: isSendingCommand) { sendCommand(.down) }
+            ControlButton(icon: CameraCommand.down.icon, isActive: activeCommand == .down, isBusy: isSendingCommand, isUnavailable: isPTZUnavailable) { sendCommand(.down) }
         }
     }
 
@@ -668,6 +1020,10 @@ private struct CameraDetailView: View {
 
     private func sendCommand(_ command: CameraCommand) {
         guard !isSendingCommand else { return }
+        guard !isPTZUnavailable else {
+            showToast("PTZ Service not reported by this camera")
+            return
+        }
         activeCommand = command
         isSendingCommand = true
         Task {
@@ -675,6 +1031,9 @@ private struct CameraDetailView: View {
             await MainActor.run {
                 isSendingCommand = false
                 activeCommand = nil
+                if result.localizedCaseInsensitiveContains("PTZ service not reported") {
+                    isPTZUnavailable = true
+                }
                 showToast(result)
             }
         }
@@ -758,6 +1117,10 @@ private struct StreamDashboardView: View {
             CameraDetailView(camera: camera)
                 .environmentObject(store)
                 .frame(minWidth: 980, minHeight: 760)
+        }
+        .onDisappear {
+            fullscreenPresenter.close()
+            isFullscreenActive = false
         }
     }
 
@@ -855,9 +1218,13 @@ private struct StreamTileView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VLCVideoContainerView(player: playerController.player)
+            VLCVideoContainerView(controller: playerController)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .background(.black)
+                .overlay(alignment: .topLeading) {
+                    PlaybackStatusBadge(controller: playerController)
+                        .padding(8)
+                }
             HStack {
                 BrandLogoView(type: camera.cameraType, size: 42)
                 VStack(alignment: .leading) {
@@ -912,9 +1279,13 @@ private struct FullscreenStreamView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             Color.black
-            VLCVideoContainerView(player: playerController.player)
+            VLCVideoContainerView(controller: playerController)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.black)
+                .overlay(alignment: .topLeading) {
+                    PlaybackStatusBadge(controller: playerController)
+                        .padding()
+                }
             closeButton
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -988,9 +1359,13 @@ private struct StreamOnlyTileView: View {
     }
 
     var body: some View {
-        VLCVideoContainerView(player: playerController.player)
+        VLCVideoContainerView(controller: playerController)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.black)
+            .overlay(alignment: .topLeading) {
+                PlaybackStatusBadge(controller: playerController)
+                    .padding(8)
+            }
             .task(id: "\(slotIndex)-\(camera.id.uuidString)") {
                 let delay = UInt64(slotIndex) * 220_000_000
                 if delay > 0 {
@@ -1001,6 +1376,26 @@ private struct StreamOnlyTileView: View {
                 }
             }
             .onDisappear { playerController.stop() }
+    }
+}
+
+private struct PlaybackStatusBadge: View {
+    @ObservedObject var controller: RTSPPlayerController
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(controller.statusText)
+                .font(.caption.weight(.semibold))
+            if let errorMessage = controller.errorMessage {
+                Text(errorMessage)
+                    .font(.caption2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1034,7 +1429,8 @@ private final class FullscreenWindowPresenter {
     }
 
     func close() {
-        window?.orderOut(nil)
+        window?.contentViewController = nil
+        window?.close()
         window = nil
     }
 }
@@ -1084,6 +1480,7 @@ private struct ControlButton: View {
     let icon: String
     let isActive: Bool
     let isBusy: Bool
+    let isUnavailable: Bool
     let action: () -> Void
 
     var body: some View {
@@ -1095,8 +1492,8 @@ private struct ControlButton: View {
                 .background(isActive ? AppTheme.accent : AppTheme.controlIdle, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(isBusy)
-        .opacity(isBusy && !isActive ? 0.7 : 1)
+        .disabled(isBusy || isUnavailable)
+        .opacity((isBusy && !isActive) || isUnavailable ? 0.45 : 1)
     }
 }
 
@@ -1104,6 +1501,7 @@ private struct ZoomControlButton: View {
     let isZoomInActive: Bool
     let isZoomOutActive: Bool
     let isBusy: Bool
+    let isUnavailable: Bool
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
 
@@ -1134,8 +1532,8 @@ private struct ZoomControlButton: View {
         .frame(width: 106, height: 106)
         .padding(10)
         .background(AppTheme.controlIdle, in: Circle())
-        .disabled(isBusy)
-        .opacity(isBusy && !isZoomInActive && !isZoomOutActive ? 0.7 : 1)
+        .disabled(isBusy || isUnavailable)
+        .opacity((isBusy && !isZoomInActive && !isZoomOutActive) || isUnavailable ? 0.45 : 1)
     }
 }
 

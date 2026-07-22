@@ -1,4 +1,5 @@
 import AppKit
+import ScreenCaptureKit
 import UniformTypeIdentifiers
 
 @MainActor
@@ -23,14 +24,12 @@ enum ScreenshotCaptureService {
         }
     }
 
-    static func captureActiveWindow() throws -> URL {
+    static func captureActiveWindow() async throws -> URL {
         guard let window = targetWindow else {
             throw CaptureError.missingWindow
         }
 
-        guard let capture = captureCompositedScreenImage(for: window) else {
-            throw CaptureError.unableToCreateBitmap
-        }
+        let capture = try await captureCompositedScreenImage(for: window)
 
         let targetSize = NSSize(width: 2560, height: 1600)
         guard let targetRep = NSBitmapImageRep(
@@ -101,20 +100,40 @@ enum ScreenshotCaptureService {
         return root
     }
 
-    private static func captureCompositedScreenImage(for window: NSWindow) -> CaptureResult? {
+    private static func captureCompositedScreenImage(for window: NSWindow) async throws -> CaptureResult {
         let frame = window.frame
-        guard frame.width > 0, frame.height > 0 else { return nil }
-
-        let captureRect = quartzScreenRect(from: frame)
-        guard let image = CGWindowListCreateImage(
-            captureRect,
-            .optionOnScreenOnly,
-            kCGNullWindowID,
-            [.bestResolution]
-        ) else {
-            return nil
+        guard frame.width > 0, frame.height > 0 else {
+            throw CaptureError.unableToCreateBitmap
         }
 
+        let content = try await SCShareableContent.excludingDesktopWindows(
+            false,
+            onScreenWindowsOnly: true
+        )
+        guard let screen = NSScreen.screens.first(where: { $0.frame.intersects(frame) }) ?? NSScreen.main,
+              let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+              let display = content.displays.first(where: { $0.displayID == displayID }) else {
+            throw CaptureError.unableToCreateBitmap
+        }
+
+        let screenRect = quartzScreenRect(from: frame)
+        let configuration = SCStreamConfiguration()
+        configuration.sourceRect = CGRect(
+            x: screenRect.minX - display.frame.minX,
+            y: screenRect.minY - display.frame.minY,
+            width: screenRect.width,
+            height: screenRect.height
+        )
+        configuration.width = Int(frame.width * screen.backingScaleFactor)
+        configuration.height = Int(frame.height * screen.backingScaleFactor)
+        configuration.showsCursor = false
+        configuration.capturesAudio = false
+
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        let image = try await SCScreenshotManager.captureImage(
+            contentFilter: filter,
+            configuration: configuration
+        )
         return CaptureResult(image: image, size: frame.size)
     }
 

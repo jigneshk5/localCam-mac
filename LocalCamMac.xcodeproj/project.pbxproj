@@ -7,16 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		26D6978DC8A8FC2C69B131AB /* Pods_Local_Cam.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80082438481E5498720E5AAE /* Pods_Local_Cam.framework */; };
 		5000C473A60362956C99F16D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74EA77FDCDEE4E351FEF836 /* ContentView.swift */; };
 		50C7380E5B14AD16650F32C6 /* CameraStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE735FECDA898A11578DCB44 /* CameraStore.swift */; };
 		66AB93ACA6D13B9FE98EC7BC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2371C17563AEBDDCAF6C8AFD /* Assets.xcassets */; };
 		8D8676AC484F562B199AC7B1 /* LocalONVIFCameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA4B01A313EBA795296BF8E /* LocalONVIFCameraService.swift */; };
 		AC352528AEA9F6FEE9829761 /* CameraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F33C2AF5A7F9CC3AD204E5 /* CameraModels.swift */; };
-		B2144B609C49C0C641177950 /* ScreenshotCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4989A6642A1B87F7E92C31 /* ScreenshotCaptureService.swift */; };
 		B3DC01D6EFF5F4A391242134 /* VLCVideoContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 875DF31218682664B727A46A /* VLCVideoContainerView.swift */; };
 		CB49FA83A6B475B694D82FCA /* LocalCamMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24FF78D5112F70F0CFEC7A6 /* LocalCamMacApp.swift */; };
+		CF1CB790CF81B2488B2A364D /* ScreenshotCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681A083CD1BAC750DD91B59D /* ScreenshotCaptureService.swift */; };
 		D1503C5F9DE0024336679F52 /* LocalCameraDiscoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27637A08185397B93FF60DDC /* LocalCameraDiscoveryService.swift */; };
+		D2C7505D7F7B886F18457FE9 /* NativeRTSPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BD82E53E1746E91698E32C2 /* NativeRTSPClient.swift */; };
 		FEF5F4C4E5F3DACA32E55A4E /* RTSPPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9332D72B19C8D40BC0E86F12 /* RTSPPlayerController.swift */; };
 /* End PBXBuildFile section */
 
@@ -25,30 +25,17 @@
 		27637A08185397B93FF60DDC /* LocalCameraDiscoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCameraDiscoveryService.swift; sourceTree = "<group>"; };
 		48F33C2AF5A7F9CC3AD204E5 /* CameraModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraModels.swift; sourceTree = "<group>"; };
 		64CEA5EC844C64BF5048D07D /* Local Cam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Local Cam.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		681A083CD1BAC750DD91B59D /* ScreenshotCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotCaptureService.swift; sourceTree = "<group>"; };
 		6DB2761F986B5A1B58CEBDA0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		7109D58755246A3D902B1AC1 /* LocalCamMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LocalCamMac.entitlements; sourceTree = "<group>"; };
-		6EB8D0FFBB16A8D4DDEA87C3 /* Pods-Local Cam.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Local Cam.release.xcconfig"; path = "Target Support Files/Pods-Local Cam/Pods-Local Cam.release.xcconfig"; sourceTree = "<group>"; };
-		7AA2972D806A687ED98BC717 /* Pods-Local Cam.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Local Cam.debug.xcconfig"; path = "Target Support Files/Pods-Local Cam/Pods-Local Cam.debug.xcconfig"; sourceTree = "<group>"; };
-		80082438481E5498720E5AAE /* Pods_Local_Cam.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Local_Cam.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		7BD82E53E1746E91698E32C2 /* NativeRTSPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRTSPClient.swift; sourceTree = "<group>"; };
 		875DF31218682664B727A46A /* VLCVideoContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLCVideoContainerView.swift; sourceTree = "<group>"; };
 		9332D72B19C8D40BC0E86F12 /* RTSPPlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTSPPlayerController.swift; sourceTree = "<group>"; };
-		9A4989A6642A1B87F7E92C31 /* ScreenshotCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotCaptureService.swift; sourceTree = "<group>"; };
 		AE735FECDA898A11578DCB44 /* CameraStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraStore.swift; sourceTree = "<group>"; };
 		BBA4B01A313EBA795296BF8E /* LocalONVIFCameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalONVIFCameraService.swift; sourceTree = "<group>"; };
+		BEC6B1351724798B251A3C0F /* LocalCamMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LocalCamMac.entitlements; sourceTree = "<group>"; };
 		C74EA77FDCDEE4E351FEF836 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F24FF78D5112F70F0CFEC7A6 /* LocalCamMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCamMacApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		5AB596FC86ABB22A8774D9B7 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				26D6978DC8A8FC2C69B131AB /* Pods_Local_Cam.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		23AFFAF5C87D539CC23BFD42 /* LocalCamMac */ = {
@@ -59,23 +46,16 @@
 				AE735FECDA898A11578DCB44 /* CameraStore.swift */,
 				C74EA77FDCDEE4E351FEF836 /* ContentView.swift */,
 				6DB2761F986B5A1B58CEBDA0 /* Info.plist */,
-				7109D58755246A3D902B1AC1 /* LocalCamMac.entitlements */,
 				27637A08185397B93FF60DDC /* LocalCameraDiscoveryService.swift */,
+				BEC6B1351724798B251A3C0F /* LocalCamMac.entitlements */,
 				F24FF78D5112F70F0CFEC7A6 /* LocalCamMacApp.swift */,
 				BBA4B01A313EBA795296BF8E /* LocalONVIFCameraService.swift */,
+				7BD82E53E1746E91698E32C2 /* NativeRTSPClient.swift */,
 				9332D72B19C8D40BC0E86F12 /* RTSPPlayerController.swift */,
-				9A4989A6642A1B87F7E92C31 /* ScreenshotCaptureService.swift */,
+				681A083CD1BAC750DD91B59D /* ScreenshotCaptureService.swift */,
 				875DF31218682664B727A46A /* VLCVideoContainerView.swift */,
 			);
 			path = LocalCamMac;
-			sourceTree = "<group>";
-		};
-		25C517F07CADB4355BFBB915 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				80082438481E5498720E5AAE /* Pods_Local_Cam.framework */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		DEF7B4114AE36ADD0C53A79F /* Products */ = {
@@ -91,18 +71,7 @@
 			children = (
 				23AFFAF5C87D539CC23BFD42 /* LocalCamMac */,
 				DEF7B4114AE36ADD0C53A79F /* Products */,
-				FB09DEC694AE772891F326B3 /* Pods */,
-				25C517F07CADB4355BFBB915 /* Frameworks */,
 			);
-			sourceTree = "<group>";
-		};
-		FB09DEC694AE772891F326B3 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				7AA2972D806A687ED98BC717 /* Pods-Local Cam.debug.xcconfig */,
-				6EB8D0FFBB16A8D4DDEA87C3 /* Pods-Local Cam.release.xcconfig */,
-			);
-			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,17 +81,16 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F90A064732496C9A5367AF1C /* Build configuration list for PBXNativeTarget "Local Cam" */;
 			buildPhases = (
-				B709954CE8239D458D363C85 /* [CP] Check Pods Manifest.lock */,
 				2515B342805C9F6D7C66DCCD /* Sources */,
 				188E2E4D46938451BF689364 /* Resources */,
-				5AB596FC86ABB22A8774D9B7 /* Frameworks */,
-				15AE50B93DD7D9E6ABA18553 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = "Local Cam";
+			packageProductDependencies = (
+			);
 			productName = "Local Cam";
 			productReference = 64CEA5EC844C64BF5048D07D /* Local Cam.app */;
 			productType = "com.apple.product-type.application";
@@ -137,6 +105,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					F89AC7ACFCBA829DED82D172 = {
+						DevelopmentTeam = 24695W2375;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -171,52 +140,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		15AE50B93DD7D9E6ABA18553 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Local Cam/Pods-Local Cam-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Local Cam/Pods-Local Cam-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Local Cam/Pods-Local Cam-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		B709954CE8239D458D363C85 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-Local Cam-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		2515B342805C9F6D7C66DCCD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -228,8 +151,9 @@
 				CB49FA83A6B475B694D82FCA /* LocalCamMacApp.swift in Sources */,
 				D1503C5F9DE0024336679F52 /* LocalCameraDiscoveryService.swift in Sources */,
 				8D8676AC484F562B199AC7B1 /* LocalONVIFCameraService.swift in Sources */,
+				D2C7505D7F7B886F18457FE9 /* NativeRTSPClient.swift in Sources */,
 				FEF5F4C4E5F3DACA32E55A4E /* RTSPPlayerController.swift in Sources */,
-				B2144B609C49C0C641177950 /* ScreenshotCaptureService.swift in Sources */,
+				CF1CB790CF81B2488B2A364D /* ScreenshotCaptureService.swift in Sources */,
 				B3DC01D6EFF5F4A391242134 /* VLCVideoContainerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -272,7 +196,9 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 8;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 24695W2375;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -289,7 +215,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.2.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -336,7 +263,9 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 8;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 24695W2375;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -347,7 +276,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.2.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -360,12 +290,10 @@
 		};
 		B7AA644C9E521EAC94F2AF19 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6EB8D0FFBB16A8D4DDEA87C3 /* Pods-Local Cam.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = LocalCamMac/LocalCamMac.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 24695W2375;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LocalCamMac/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -380,12 +308,10 @@
 		};
 		D71412043F5E4C5B68BF2A6B /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AA2972D806A687ED98BC717 /* Pods-Local Cam.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = LocalCamMac/LocalCamMac.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 24695W2375;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LocalCamMac/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -2,11 +2,14 @@ name: LocalCamMac
 options:
   bundleIdPrefix: app.localcam
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "15.0"
 settings:
   base:
     SWIFT_VERSION: 5.0
     CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 24695W2375
+    MARKETING_VERSION: 1.2.1
+    CURRENT_PROJECT_VERSION: 8
 targets:
   Local Cam:
     type: application
@@ -18,10 +21,13 @@ targets:
       properties:
         CFBundleDisplayName: Local Cam
         CFBundleIconName: AppIcon
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSUIElement: false
         LSApplicationCategoryType: public.app-category.utilities
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
-        NSLocalNetworkUsageDescription: Local Cam uses your local network to discover ONVIF cameras nearby.
+        NSLocalNetworkUsageDescription: Local Cam uses your local network to discover cameras and play their live video streams.
     settings:
       base:
         PRODUCT_NAME: Local Cam

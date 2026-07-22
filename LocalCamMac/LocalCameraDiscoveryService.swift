@@ -38,10 +38,15 @@ final class LocalCameraDiscoveryService {
 
     func search(timeout: TimeInterval = 4.0) async -> [DiscoveredCamera] {
         let multicastResults = await discoverByMulticast(timeout: timeout)
-        if !multicastResults.isEmpty {
-            return multicastResults
+        let subnetResults = await discoverBySubnetScan()
+        var merged: [String: DiscoveredCamera] = [:]
+        for camera in subnetResults {
+            merged[camera.host] = camera
         }
-        return await discoverBySubnetScan()
+        for camera in multicastResults {
+            merged[camera.host] = camera
+        }
+        return Array(merged.values).sorted { $0.host.localizedStandardCompare($1.host) == .orderedAscending }
     }
 
     private func discoverByMulticast(timeout: TimeInterval) async -> [DiscoveredCamera] {

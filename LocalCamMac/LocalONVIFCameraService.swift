@@ -13,7 +13,7 @@ actor LocalONVIFCameraService {
     private var sessionCache: [String: SessionInfo] = [:]
 
     func validateCredentials(for camera: CameraRecord) async throws {
-        _ = try await authenticatedCapabilities(for: camera)
+        _ = try await authenticatedDeviceInformation(for: camera)
     }
 
     func sendPTZ(command: CameraCommand, camera: CameraRecord) async -> String {
@@ -24,6 +24,7 @@ actor LocalONVIFCameraService {
             }
 
             let velocity = Self.velocity(for: command)
+            let timeoutSeconds = String(format: "%.1f", Double(command.durationMs) / 1000.0)
             let body = """
             <tptz:ContinuousMove>
               <tptz:ProfileToken>\(session.profileToken)</tptz:ProfileToken>
@@ -31,6 +32,7 @@ actor LocalONVIFCameraService {
                 <tt:PanTilt x="\(velocity.pan)" y="\(velocity.tilt)"/>
                 <tt:Zoom x="\(velocity.zoom)"/>
               </tptz:Velocity>
+              <tptz:Timeout>PT\(timeoutSeconds)S</tptz:Timeout>
             </tptz:ContinuousMove>
             """
 
@@ -111,37 +113,72 @@ actor LocalONVIFCameraService {
         guard let url = deviceServiceURL ?? camera.deviceServiceURL else {
             throw ONVIFError.invalidResponse("Invalid ONVIF device service URL.")
         }
-        do {
-            return try await sendSOAPRequest(
-                to: url,
-                action: "http://www.onvif.org/ver10/device/wsdl/GetCapabilities",
-                body: "<tds:GetCapabilities><tds:Category>All</tds:Category></tds:GetCapabilities>",
-                camera: camera,
-                authMode: .wsse
-            )
-        } catch {
-            return try await sendSOAPRequest(
-                to: url,
-                action: "http://www.onvif.org/ver10/device/wsdl/GetCapabilities",
-                body: "<tds:GetCapabilities><tds:Category>All</tds:Category></tds:GetCapabilities>",
-                camera: camera,
-                authMode: .basicAndWsse
-            )
+        return try await authenticatedSOAPRequest(
+            to: url,
+            action: "http://www.onvif.org/ver10/device/wsdl/GetCapabilities",
+            body: "<tds:GetCapabilities><tds:Category>All</tds:Category></tds:GetCapabilities>",
+            camera: camera
+        )
+    }
+
+    private func authenticatedDeviceInformation(for camera: CameraRecord) async throws -> Data {
+        guard let url = camera.deviceServiceURL else {
+            throw ONVIFError.invalidResponse("Invalid ONVIF device service URL.")
         }
+        return try await authenticatedSOAPRequest(
+            to: url,
+            action: "http://www.onvif.org/ver10/device/wsdl/GetDeviceInformation",
+            body: "<tds:GetDeviceInformation/>",
+            camera: camera
+        )
+    }
+
+    private func authenticatedSOAPRequest(to url: URL, action: String, body: String, camera: CameraRecord) async throws -> Data {
+        var lastError: Error?
+        for authMode in AuthMode.validationModes {
+            do {
+                return try await sendSOAPRequest(to: url, action: action, body: body, camera: camera, authMode: authMode)
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError ?? ONVIFError.invalidResponse("ONVIF authentication failed.")
     }
 
     private enum AuthMode {
-        case wsse
-        case basicAndWsse
+        case wssePasswordDigest
+        case wssePasswordText
+        case basic
+        case basicAndWssePasswordDigest
+        case basicAndWssePasswordText
+        case httpDigest
+
+        static let validationModes: [AuthMode] = [
+            .wssePasswordDigest,
+            .wssePasswordText,
+            .basic,
+            .basicAndWssePasswordDigest,
+            .basicAndWssePasswordText,
+            .httpDigest
+        ]
+
+        var includesBasicAuthorization: Bool {
+            switch self {
+            case .basic, .basicAndWssePasswordDigest, .basicAndWssePasswordText:
+                return true
+            case .wssePasswordDigest, .wssePasswordText, .httpDigest:
+                return false
+            }
+        }
     }
 
-    private func sendSOAPRequest(to url: URL, action: String, body: String, camera: CameraRecord, authMode: AuthMode = .wsse) async throws -> Data {
+    private func sendSOAPRequest(to url: URL, action: String, body: String, camera: CameraRecord, authMode: AuthMode = .wssePasswordDigest) async throws -> Data {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 15
         request.setValue("application/soap+xml; charset=utf-8; action=\"\(action)\"", forHTTPHeaderField: "Content-Type")
-        request.httpBody = soapEnvelope(body: body, camera: camera).data(using: .utf8)
-        if authMode == .basicAndWsse {
+        request.httpBody = soapEnvelope(body: body, camera: camera, authMode: authMode).data(using: .utf8)
+        if authMode.includesBasicAuthorization {
             let token = "\(camera.sanitizedUsername):\(camera.sanitizedPassword)"
                 .data(using: .utf8)?
                 .base64EncodedString() ?? ""
@@ -153,6 +190,28 @@ actor LocalONVIFCameraService {
             throw ONVIFError.invalidResponse("No ONVIF HTTP response.")
         }
 
+        if httpResponse.statusCode == 401,
+           authMode == .httpDigest,
+           let authenticateHeader = Self.headerValue(named: "WWW-Authenticate", in: httpResponse),
+           let authorization = Self.digestAuthorizationHeader(
+                authenticateHeader: authenticateHeader,
+                method: "POST",
+                url: url,
+                camera: camera
+           ) {
+            var digestRequest = request
+            digestRequest.setValue(authorization, forHTTPHeaderField: "Authorization")
+            let (digestData, digestResponse) = try await URLSession.shared.data(for: digestRequest)
+            guard let digestHTTPResponse = digestResponse as? HTTPURLResponse else {
+                throw ONVIFError.invalidResponse("No ONVIF HTTP response.")
+            }
+            guard (200..<300).contains(digestHTTPResponse.statusCode) else {
+                let message = String(data: digestData, encoding: .utf8) ?? "Unknown ONVIF error"
+                throw ONVIFError.httpFailure(digestHTTPResponse.statusCode, message)
+            }
+            return digestData
+        }
+
         guard (200..<300).contains(httpResponse.statusCode) else {
             let message = String(data: data, encoding: .utf8) ?? "Unknown ONVIF error"
             throw ONVIFError.httpFailure(httpResponse.statusCode, message)
@@ -161,11 +220,16 @@ actor LocalONVIFCameraService {
         return data
     }
 
-    private func soapEnvelope(body: String, camera: CameraRecord) -> String {
-        let nonce = Self.randomNonce()
-        let created = Self.createdTimestamp()
-        let digest = Self.passwordDigest(nonce: nonce, created: created, password: camera.sanitizedPassword)
-        let nonceString = nonce.base64EncodedString()
+    private func soapEnvelope(body: String, camera: CameraRecord, authMode: AuthMode) -> String {
+        let securityHeader: String
+        switch authMode {
+        case .wssePasswordDigest, .basicAndWssePasswordDigest:
+            securityHeader = wssePasswordDigestHeader(camera: camera)
+        case .wssePasswordText, .basicAndWssePasswordText:
+            securityHeader = wssePasswordTextHeader(camera: camera)
+        case .basic, .httpDigest:
+            securityHeader = ""
+        }
 
         return """
         <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
@@ -176,17 +240,39 @@ actor LocalONVIFCameraService {
                     xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
                     xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
           <s:Header>
-            <wsse:Security s:mustUnderstand="1">
-              <wsse:UsernameToken>
-                <wsse:Username>\(camera.sanitizedUsername)</wsse:Username>
-                <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">\(digest)</wsse:Password>
-                <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">\(nonceString)</wsse:Nonce>
-                <wsu:Created>\(created)</wsu:Created>
-              </wsse:UsernameToken>
-            </wsse:Security>
+            \(securityHeader)
           </s:Header>
           <s:Body>\(body)</s:Body>
         </s:Envelope>
+        """
+    }
+
+    private func wssePasswordDigestHeader(camera: CameraRecord) -> String {
+        let nonce = Self.randomNonce()
+        let created = Self.createdTimestamp()
+        let digest = Self.passwordDigest(nonce: nonce, created: created, password: camera.sanitizedPassword)
+        let nonceString = nonce.base64EncodedString()
+
+        return """
+        <wsse:Security>
+          <wsse:UsernameToken>
+            <wsse:Username>\(Self.xmlEscaped(camera.sanitizedUsername))</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">\(digest)</wsse:Password>
+            <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">\(nonceString)</wsse:Nonce>
+            <wsu:Created>\(created)</wsu:Created>
+          </wsse:UsernameToken>
+        </wsse:Security>
+        """
+    }
+
+    private func wssePasswordTextHeader(camera: CameraRecord) -> String {
+        """
+        <wsse:Security>
+          <wsse:UsernameToken>
+            <wsse:Username>\(Self.xmlEscaped(camera.sanitizedUsername))</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">\(Self.xmlEscaped(camera.sanitizedPassword))</wsse:Password>
+          </wsse:UsernameToken>
+        </wsse:Security>
         """
     }
 
@@ -196,7 +282,7 @@ actor LocalONVIFCameraService {
 
     private static func createdTimestamp() -> String {
         let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.formatOptions = [.withInternetDateTime]
         return formatter.string(from: Date())
     }
 
@@ -207,6 +293,77 @@ actor LocalONVIFCameraService {
         data.append(Data(password.utf8))
         let digest = Insecure.SHA1.hash(data: data)
         return Data(digest).base64EncodedString()
+    }
+
+    private static func headerValue(named name: String, in response: HTTPURLResponse) -> String? {
+        response.allHeaderFields.first { key, _ in
+            String(describing: key).caseInsensitiveCompare(name) == .orderedSame
+        }.map { String(describing: $0.value) }
+    }
+
+    private static func digestAuthorizationHeader(authenticateHeader: String, method: String, url: URL, camera: CameraRecord) -> String? {
+        let parameters = digestParameters(from: authenticateHeader)
+        guard let realm = parameters["realm"], let nonce = parameters["nonce"] else { return nil }
+
+        let uri = url.path + (url.query.map { "?\($0)" } ?? "")
+        let qop = parameters["qop"]?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.first { $0 == "auth" }
+        let nonceCount = "00000001"
+        let cnonce = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        let ha1 = md5Hex("\(camera.sanitizedUsername):\(realm):\(camera.sanitizedPassword)")
+        let ha2 = md5Hex("\(method):\(uri)")
+        let response: String
+        if let qop {
+            response = md5Hex("\(ha1):\(nonce):\(nonceCount):\(cnonce):\(qop):\(ha2)")
+        } else {
+            response = md5Hex("\(ha1):\(nonce):\(ha2)")
+        }
+
+        var parts = [
+            #"username="\#(camera.sanitizedUsername)""#,
+            #"realm="\#(realm)""#,
+            #"nonce="\#(nonce)""#,
+            #"uri="\#(uri)""#,
+            #"response="\#(response)""#,
+            "algorithm=MD5"
+        ]
+        if let opaque = parameters["opaque"] {
+            parts.append(#"opaque="\#(opaque)""#)
+        }
+        if let qop {
+            parts.append("qop=\(qop)")
+            parts.append("nc=\(nonceCount)")
+            parts.append(#"cnonce="\#(cnonce)""#)
+        }
+        return "Digest " + parts.joined(separator: ", ")
+    }
+
+    private static func digestParameters(from header: String) -> [String: String] {
+        var result: [String: String] = [:]
+        let trimmedHeader = header.replacingOccurrences(of: "Digest", with: "", options: [.caseInsensitive])
+        let pattern = #"([A-Za-z0-9_\-]+)=("[^"]*"|[^,]*)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return result }
+        let range = NSRange(trimmedHeader.startIndex..<trimmedHeader.endIndex, in: trimmedHeader)
+        for match in regex.matches(in: trimmedHeader, range: range) {
+            guard let keyRange = Range(match.range(at: 1), in: trimmedHeader),
+                  let valueRange = Range(match.range(at: 2), in: trimmedHeader) else { continue }
+            let key = String(trimmedHeader[keyRange]).lowercased()
+            let value = String(trimmedHeader[valueRange]).trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            result[key] = value
+        }
+        return result
+    }
+
+    private static func md5Hex(_ value: String) -> String {
+        Insecure.MD5.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func xmlEscaped(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&apos;")
     }
 
     private static func extractTag(named tag: String, in xml: String) -> String? {
